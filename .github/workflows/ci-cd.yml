@@ -1,0 +1,137 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ==========================================
+  # CI: Validação do Backend
+  # ==========================================
+  backend-ci:
+    name: Backend CI (Lint, Audit, Build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependências (npm ci)
+        run: npm ci
+
+      - name: Executar Lint
+        run: npm run lint
+
+      - name: Auditoria de segurança (npm audit)
+        run: npm audit --audit-level=high
+
+      - name: Build do backend
+        run: npm run build
+
+  # ==========================================
+  # CI: Validação do Frontend
+  # ==========================================
+  frontend-ci:
+    name: Frontend CI (Lint, Audit, Build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências (npm ci)
+        run: npm ci
+
+      - name: Executar Lint
+        run: npm run lint
+
+      - name: Auditoria de segurança (dependências de produção)
+        run: npm audit --audit-level=high --omit=dev
+
+      - name: Build da SPA React (Vite)
+        run: npm run build
+
+  # ==========================================
+  # CI: Análise Estática de Segurança (SAST)
+  # ==========================================
+  sast:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Executar Semgrep SAST
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/javascript
+
+  # ==========================================
+  # CD: Build e Push no Docker Hub (apenas main)
+  # ==========================================
+  cd-dockerhub:
+    name: CD (Docker Hub)
+    runs-on: ubuntu-latest
+    needs: [backend-ci, frontend-ci, sast]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Autenticar no Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build e Push - Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            arthurmoraes21/lendomais-backend:latest
+            arthurmoraes21/lendomais-backend:${{ github.sha }}
+
+      - name: Build e Push - Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          build-args: |
+            VITE_API_URL=${{ secrets.VITE_API_URL }}
+          tags: |
+            arthurmoraes21/lendomais-frontend:latest
+            arthurmoraes21/lendomais-frontend:${{ github.sha }}
+
