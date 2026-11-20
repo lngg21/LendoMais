@@ -1,0 +1,19 @@
+{
+  "name": "books-backend",
+  "version": "1.0.0",
+  "description": "API REST para gerenciamento de livros utilizando Service Pattern e PostgreSQL",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "build": "echo \"Backend build not required\"",
+    "lint": "node --check src/server.js && node --check src/app.js && node --check src/config/database.js && node --check src/controllers/bookController.js && node --check src/repositories/bookRepository.js && node --check src/routes/bookRoutes.js && node --check src/services/bookService.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  }
+}
+
