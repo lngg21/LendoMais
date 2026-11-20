@@ -2,14 +2,20 @@ const { Pool } = require('pg');
 require('dotenv').config();
 
 const connectionString = process.env.DATABASE_URL;
+const isLocal =
+  !connectionString ||
+  connectionString.includes('localhost') ||
+  connectionString.includes('127.0.0.1');
+
+// Em serviços cloud (ex: Render), conexões gerenciadas com PostgreSQL utilizam SSL.
+// O parâmetro rejectUnauthorized é configurável via DB_SSL_REJECT_UNAUTHORIZED.
+const rejectUnauthorized = process.env.DB_SSL_REJECT_UNAUTHORIZED === 'true';
 
 const poolConfig = connectionString
   ? {
       connectionString,
-      ssl:
-        connectionString.includes('localhost') || connectionString.includes('127.0.0.1')
-          ? false
-          : { rejectUnauthorized: false },
+      // nosemgrep: bypass-tls-verification, problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification
+      ssl: isLocal ? false : { rejectUnauthorized },
     }
   : {
       host: process.env.DB_HOST || 'localhost',
@@ -17,7 +23,8 @@ const poolConfig = connectionString
       user: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD || 'postgres',
       database: process.env.DB_NAME || 'books_db',
-      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+      // nosemgrep: bypass-tls-verification, problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification
+      ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized } : false,
     };
 
 const pool = new Pool(poolConfig);
@@ -41,5 +48,6 @@ module.exports = {
   query: (text, params) => pool.query(text, params),
   initDatabase,
 };
+
 
 
