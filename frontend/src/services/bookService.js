@@ -1,7 +1,21 @@
 import axios from 'axios';
 
+// Prioriza import.meta.env.VITE_API_URL com suporte a variações de nomenclatura e fallback local
+const rawApiUrl =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_URL_API ||
+  import.meta.env.VITE_BACKEND_URL;
+
+const getBaseUrl = () => {
+  if (!rawApiUrl) {
+    return 'http://localhost:3001/api';
+  }
+  const cleanUrl = rawApiUrl.trim().replace(/\/+$/, '');
+  return cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001/api',
+  baseURL: getBaseUrl(),
 });
 
 export const bookService = {
@@ -29,4 +43,5 @@ export const bookService = {
     await api.delete(`/books/${id}`);
   },
 };
+
 
