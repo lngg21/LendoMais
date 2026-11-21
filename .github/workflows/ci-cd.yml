@@ -130,7 +130,7 @@ jobs:
           file: ./frontend/Dockerfile
           push: true
           build-args: |
-            VITE_API_URL=${{ secrets.VITE_API_URL }}
+            VITE_API_URL=${{ secrets.VITE_API_URL || vars.VITE_API_URL || 'https://lendomais-backend-latest-d2di.onrender.com' }}
           tags: |
             arthurmoraes21/lendomais-frontend:latest
             arthurmoraes21/lendomais-frontend:${{ github.sha }}
